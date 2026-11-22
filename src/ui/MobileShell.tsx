@@ -26,6 +26,8 @@ import {
 } from '../infra/db/OfflineRepository';
 import { CadastroRural } from './CadastroRural';
 import { ActivityDetails } from './ActivityDetails';
+import { BrandMark } from './BrandMark';
+import { SuppliesScreen } from './SuppliesScreen';
 import {
   loadActivities,
   recentActivities,
@@ -57,6 +59,7 @@ type Screen =
   | 'novo-talhao'
   | 'editar-talhao'
   | 'financeiro'
+  | 'insumos'
   | 'ia'
   | 'mapa'
   | 'mais';
@@ -139,6 +142,7 @@ const titles: Record<Screen, string> = {
   'novo-talhao': 'Novo talhão',
   'editar-talhao': 'Editar talhão',
   financeiro: 'Custos da safra',
+  insumos: 'Insumos',
   ia: 'SafraIA',
   mapa: 'Mapa offline',
   mais: 'Mais',
@@ -513,8 +517,8 @@ export function MobileShell({
   const [saving, setSaving] = useState(false);
   const activitySaveLock = useRef(false);
   const [cadastroBusy, setCadastroBusy] = useState(false);
+  const [supplyUncertain, setSupplyUncertain] = useState(false);
   const [filter, setFilter] = useState('');
-  const [suppliesNotice, setSuppliesNotice] = useState(false);
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [asking, setAsking] = useState(false);
@@ -527,7 +531,6 @@ export function MobileShell({
   function openActivities() {
     setFilter('');
     setNotice('');
-    setSuppliesNotice(false);
     setScreen('atividades');
   }
 
@@ -943,6 +946,7 @@ export function MobileShell({
     <View style={styles.screen}>
       {screen === 'inicio' || screen === 'ia' ? (
         <View style={styles.hero}>
+          <BrandMark size={36} />
           <Text style={styles.heroEyebrow}>
             {screen === 'ia'
               ? 'ASSISTENTE DE CAMPO'
@@ -960,11 +964,13 @@ export function MobileShell({
           {screen !== 'editar-propriedade' && screen !== 'editar-talhao' && (
             <Pressable
               accessibilityLabel="Voltar ao início"
+              disabled={screen === 'insumos' && cadastroBusy}
               onPress={() => setScreen('inicio')}
             >
               <Text style={styles.back}>‹</Text>
             </Pressable>
           )}
+          <BrandMark size={32} />
           <View style={styles.headerTitle}>
             <Text style={styles.eyebrow}>SAFRAVIVA · CAMPO</Text>
             <Text style={styles.title}>{titles[screen]}</Text>
@@ -1141,13 +1147,13 @@ export function MobileShell({
                   },
                   {
                     label: 'Insumos',
-                    target: null,
+                    target: 'insumos',
                     icon: '📦',
                     color: '#f0eafa',
                   },
                 ] as {
                   label: string;
-                  target: Screen | null;
+                  target: Screen;
                   icon: string;
                   color: string;
                 }[]
@@ -1158,24 +1164,14 @@ export function MobileShell({
                   accessibilityLabel={
                     target === 'atividades'
                       ? 'Atividades, atalho rápido'
-                      : target
-                      ? label
-                      : 'Insumos, indisponível'
-                  }
-                  accessibilityHint={
-                    target
-                      ? undefined
-                      : 'Informa que insumos ainda não está disponível.'
+                      : label
                   }
                   onPress={() => {
                     if (target === 'atividades') {
                       openActivities();
-                    } else if (target) {
-                      setNotice('');
-                      setSuppliesNotice(false);
-                      setScreen(target);
                     } else {
-                      setSuppliesNotice(true);
+                      setNotice('');
+                      setScreen(target);
                     }
                   }}
                   style={styles.shortcut}
@@ -1186,17 +1182,9 @@ export function MobileShell({
                     <Text style={styles.shortcutIconText}>{icon}</Text>
                   </View>
                   <Text style={styles.shortcutLabel}>{label}</Text>
-                  {!target && (
-                    <Text style={styles.shortcutUnavailable}>Em breve</Text>
-                  )}
                 </Pressable>
               ))}
             </ScrollView>
-            {suppliesNotice && (
-              <Text accessibilityLiveRegion="polite" style={styles.info}>
-                A consulta de insumos ainda não está disponível no aplicativo.
-              </Text>
-            )}
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Abrir sincronização"
@@ -1537,6 +1525,17 @@ export function MobileShell({
             </Text>
           </>
         )}
+        {screen === 'insumos' && (
+          <SuppliesScreen
+            client={client}
+            user={user}
+            connectivity={connectivity}
+            busy={cadastroBusy}
+            onBusyChange={setCadastroBusy}
+            uncertain={supplyUncertain}
+            onUncertainChange={setSupplyUncertain}
+          />
+        )}
         {screen === 'talhoes' && (
           <>
             {plotRefreshFailed && (
@@ -1769,7 +1768,8 @@ export function MobileShell({
               [
                 ['Propriedades', 'propriedades'],
                 ['Talhões', 'talhoes'],
-                ['Financeiro e insumos', 'financeiro'],
+                ['Financeiro', 'financeiro'],
+                ['Insumos', 'insumos'],
                 ['Central de sincronização', 'sync'],
                 ['SafraIA', 'ia'],
                 ['Mapa offline', 'mapa'],
@@ -1884,6 +1884,7 @@ export function MobileShell({
               accessibilityRole="button"
               accessibilityLabel={label}
               key={target}
+              disabled={screen === 'insumos' && cadastroBusy}
               onPress={() => {
                 setNotice('');
                 setScreen(target);
@@ -2027,7 +2028,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
-  shortcutUnavailable: { color: '#81938b', fontSize: 10, marginTop: 3 },
   syncShortcut: {
     backgroundColor: '#fff',
     borderWidth: 1,

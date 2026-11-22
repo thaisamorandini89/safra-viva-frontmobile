@@ -7,6 +7,7 @@ import {
 } from '@react-native-community/netinfo';
 import { AppState, type AppStateStatus } from 'react-native';
 import App from '../App';
+import { BrandMark } from '../src/ui/BrandMark';
 import { getConnectivity } from '../src/app/sync/connectivity';
 import { openLocalDb } from '../src/infra/db/openLocalDb';
 
@@ -63,6 +64,7 @@ test('exibe conectividade e fila, atualiza ao retornar e remove assinaturas', as
   await ReactTestRenderer.act(async () => {
     renderer = ReactTestRenderer.create(<App />);
   });
+  expect(renderer!.root.findAllByType(BrandMark)).toHaveLength(1);
   expect(JSON.stringify(renderer!.toJSON())).toContain(
     'Conectividade desconhecida.',
   );
@@ -142,6 +144,22 @@ test('login preserva a integração, opção de teste local e controle de senha'
     renderer = ReactTestRenderer.create(<App />);
   });
   const root = renderer!.root;
+  expect(root.findByProps({ accessibilityLabel: 'Servidor' }).props.value).toBe(
+    'http://127.0.0.1:5000',
+  );
+  expect(
+    root.findByProps({
+      accessibilityLabel: 'Permitir HTTP local apenas para testes',
+    }).props.accessibilityState.checked,
+  ).toBe(false);
+  await ReactTestRenderer.act(async () => {
+    root
+      .findByProps({ accessibilityLabel: 'Servidor' })
+      .props.onChangeText('https://servidor.exemplo.com');
+  });
+  expect(root.findByProps({ accessibilityLabel: 'Servidor' }).props.value).toBe(
+    'https://servidor.exemplo.com',
+  );
   expect(
     root.findByProps({ accessibilityLabel: 'Senha' }).props.secureTextEntry,
   ).toBe(true);
@@ -160,25 +178,31 @@ test('login preserva a integração, opção de teste local e controle de senha'
   await ReactTestRenderer.act(async () => {
     root
       .findByProps({ accessibilityLabel: 'Servidor' })
-      .props.onChangeText('http://localhost:5000');
+      .props.onChangeText('http://127.0.0.1:5000');
     root
       .findByProps({ accessibilityLabel: 'E-mail' })
       .props.onChangeText('teste@example.com');
     root
       .findByProps({ accessibilityLabel: 'Senha' })
       .props.onChangeText('senha-teste');
+  });
+  await ReactTestRenderer.act(async () =>
+    root.findByProps({ accessibilityLabel: 'Entrar' }).props.onPress(),
+  );
+  expect(globalThis.fetch).not.toHaveBeenCalled();
+  await ReactTestRenderer.act(async () =>
     root
       .findByProps({
         accessibilityLabel: 'Permitir HTTP local apenas para testes',
       })
-      .props.onPress();
-  });
+      .props.onPress(),
+  );
   expect(JSON.stringify(renderer!.toJSON())).toContain('sem criptografia');
   await ReactTestRenderer.act(async () =>
     root.findByProps({ accessibilityLabel: 'Entrar' }).props.onPress(),
   );
   expect(globalThis.fetch).toHaveBeenCalledWith(
-    'http://localhost:5000/api/auth/login',
+    'http://127.0.0.1:5000/api/auth/login',
     expect.objectContaining({
       method: 'POST',
       body: JSON.stringify({

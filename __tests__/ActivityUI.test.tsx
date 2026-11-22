@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 import { MobileShell } from '../src/ui/MobileShell';
+import { BrandMark } from '../src/ui/BrandMark';
 import type { BackendClient, Usuario } from '../src/infra/api/BackendClient';
 import type { LocalDb } from '../src/infra/db/LocalDb';
 
@@ -506,7 +507,7 @@ test.each([
   await ReactTestRenderer.act(async () => renderer!.unmount());
 });
 
-test('atalho de insumos informa indisponibilidade sem navegar nem consultar backend', async () => {
+test('atalho de insumos abre a lista e informa indisponibilidade offline', async () => {
   const env = setup();
   let renderer: ReactTestRenderer.ReactTestRenderer;
   await ReactTestRenderer.act(async () => {
@@ -521,21 +522,21 @@ test('atalho de insumos informa indisponibilidade sem navegar nem consultar back
     );
   });
   const button = renderer!.root.findByProps({
-    accessibilityLabel: 'Insumos, indisponível',
+    accessibilityLabel: 'Insumos',
   });
+  expect(renderer!.root.findAllByType(BrandMark)).toHaveLength(1);
   expect(button.props.accessibilityRole).toBe('button');
   expect(
     renderer!.root.findByProps({ accessibilityLabel: 'Atalhos rápidos' }).props
       .horizontal,
   ).toBe(true);
   await ReactTestRenderer.act(async () => button.props.onPress());
+  expect(renderer!.root.findAllByType(BrandMark)).toHaveLength(1);
   expect(JSON.stringify(renderer!.toJSON())).toContain(
-    'A consulta de insumos ainda não está disponível',
+    'Insumos do servidor indisponíveis',
   );
   expect(
-    renderer!.root.findByProps({
-      accessibilityLabel: 'Abrir lista de atividades',
-    }),
+    renderer!.root.findByProps({ accessibilityLabel: 'Buscar insumos' }),
   ).toBeDefined();
   expect(env.request).not.toHaveBeenCalled();
   await ReactTestRenderer.act(async () => renderer!.unmount());

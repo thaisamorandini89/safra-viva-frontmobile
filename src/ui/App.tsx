@@ -22,6 +22,7 @@ import { BackendSyncTransport } from '../infra/api/BackendSyncTransport';
 import type { LocalDb } from '../infra/db/LocalDb';
 import { openLocalDb } from '../infra/db/openLocalDb';
 import { MobileShell } from './MobileShell';
+import { BrandMark } from './BrandMark';
 
 export default function App() {
   const [storageStatus, setStorageStatus] = useState<
@@ -31,7 +32,7 @@ export default function App() {
   const [summary, setSummary] = useState<SyncSummary | null>(null);
   const [summaryError, setSummaryError] = useState(false);
   const [localDb, setLocalDb] = useState<LocalDb | null>(null);
-  const [server, setServer] = useState('');
+  const [server, setServer] = useState(__DEV__ ? 'http://127.0.0.1:5000' : '');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -195,9 +196,7 @@ export default function App() {
                   <View style={styles.heroRingInner} />
                 </View>
                 <View style={styles.brandRow}>
-                  <View style={styles.brandIcon}>
-                    <Text style={styles.brandIconText}>❋</Text>
-                  </View>
+                  <BrandMark size={44} />
                   <View>
                     <Text style={styles.brand}>SafraViva</Text>
                     <Text style={styles.brandCaption}>
@@ -248,7 +247,9 @@ export default function App() {
                   keyboardType="url"
                 />
                 <Text style={styles.fieldHint}>
-                  Informe o endereço HTTPS, sem /api.
+                  {__DEV__
+                    ? 'Para testes via USB, use o endereço local e habilite HTTP abaixo. Em outros casos, informe HTTPS, sem /api.'
+                    : 'Informe o endereço HTTPS, sem /api.'}
                 </Text>
                 {__DEV__ && (
                   <View style={styles.devOption}>
@@ -431,15 +432,6 @@ const styles = StyleSheet.create({
     borderRadius: 55,
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brandIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#d8edb7',
-  },
-  brandIconText: { color: '#1b6741', fontSize: 28, lineHeight: 32 },
   brand: {
     color: '#fff',
     fontSize: 23,
