@@ -25,6 +25,19 @@ import {
   type LocalRecord,
 } from '../infra/db/OfflineRepository';
 import { CadastroRural } from './CadastroRural';
+<<<<<<< Updated upstream
+=======
+import { ActivityDetails } from './ActivityDetails';
+import { BrandMark } from './BrandMark';
+import { SuppliesScreen } from './SuppliesScreen';
+import {
+  loadActivities,
+  recentActivities,
+  visibleLocalActivities,
+  type Activity,
+} from '../app/activities/activityData';
+import { parseNumber } from '../app/cadastros/validation';
+>>>>>>> Stashed changes
 import {
   loadProperty,
   propertyFields,
@@ -48,6 +61,7 @@ type Screen =
   | 'novo-talhao'
   | 'editar-talhao'
   | 'financeiro'
+  | 'insumos'
   | 'ia'
   | 'mapa'
   | 'mais';
@@ -139,6 +153,7 @@ const titles: Record<Screen, string> = {
   'novo-talhao': 'Novo talhão',
   'editar-talhao': 'Editar talhão',
   financeiro: 'Custos da safra',
+  insumos: 'Insumos',
   ia: 'SafraIA',
   mapa: 'Mapa offline',
   mais: 'Mais',
@@ -494,6 +509,7 @@ export function MobileShell({
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [cadastroBusy, setCadastroBusy] = useState(false);
+  const [supplyUncertain, setSupplyUncertain] = useState(false);
   const [filter, setFilter] = useState('');
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -504,6 +520,15 @@ export function MobileShell({
     'proprietario',
   ].includes(user.perfil.toLowerCase());
 
+<<<<<<< Updated upstream
+=======
+  function openActivities() {
+    setFilter('');
+    setNotice('');
+    setScreen('atividades');
+  }
+
+>>>>>>> Stashed changes
   const reloadLocal = useCallback(async () => {
     const [nextSummary, nextQueue, local] = await Promise.all([
       readSyncSummary(db),
@@ -842,6 +867,7 @@ export function MobileShell({
     <View style={styles.screen}>
       {screen === 'inicio' || screen === 'ia' ? (
         <View style={styles.hero}>
+          <BrandMark size={36} />
           <Text style={styles.heroEyebrow}>
             {screen === 'ia'
               ? 'ASSISTENTE DE CAMPO'
@@ -859,11 +885,13 @@ export function MobileShell({
           {screen !== 'editar-propriedade' && screen !== 'editar-talhao' && (
             <Pressable
               accessibilityLabel="Voltar ao início"
+              disabled={screen === 'insumos' && cadastroBusy}
               onPress={() => setScreen('inicio')}
             >
               <Text style={styles.back}>‹</Text>
             </Pressable>
           )}
+          <BrandMark size={32} />
           <View style={styles.headerTitle}>
             <Text style={styles.eyebrow}>SAFRAVIVA · CAMPO</Text>
             <Text style={styles.title}>{titles[screen]}</Text>
@@ -963,6 +991,7 @@ export function MobileShell({
             <View style={styles.chips}>
               {(
                 [
+<<<<<<< Updated upstream
                   ['Nova atividade', 'nova'],
                   ['Talhões', 'talhoes'],
                   ['Financeiro', 'financeiro'],
@@ -976,6 +1005,85 @@ export function MobileShell({
                 />
               ))}
             </View>
+=======
+                  {
+                    label: 'Nova atividade',
+                    target: 'nova',
+                    icon: '🌱',
+                    color: '#e5f7ea',
+                  },
+                  {
+                    label: 'Atividades',
+                    target: 'atividades',
+                    icon: '📋',
+                    color: '#e9f4e8',
+                  },
+                  {
+                    label: 'Talhões',
+                    target: 'talhoes',
+                    icon: '🌾',
+                    color: '#e5f2f8',
+                  },
+                  {
+                    label: 'Financeiro',
+                    target: 'financeiro',
+                    icon: '💰',
+                    color: '#faeddd',
+                  },
+                  {
+                    label: 'Insumos',
+                    target: 'insumos',
+                    icon: '📦',
+                    color: '#f0eafa',
+                  },
+                ] as {
+                  label: string;
+                  target: Screen;
+                  icon: string;
+                  color: string;
+                }[]
+              ).map(({ label, target, icon, color }) => (
+                <Pressable
+                  key={label}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    target === 'atividades'
+                      ? 'Atividades, atalho rápido'
+                      : label
+                  }
+                  onPress={() => {
+                    if (target === 'atividades') {
+                      openActivities();
+                    } else {
+                      setNotice('');
+                      setScreen(target);
+                    }
+                  }}
+                  style={styles.shortcut}
+                >
+                  <View
+                    style={[styles.shortcutIcon, { backgroundColor: color }]}
+                  >
+                    <Text style={styles.shortcutIconText}>{icon}</Text>
+                  </View>
+                  <Text style={styles.shortcutLabel}>{label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Abrir sincronização"
+              onPress={() => setScreen('sync')}
+              style={styles.syncShortcut}
+            >
+              <Text style={styles.cardTitle}>
+                {queued === 1
+                  ? '1 registro na fila'
+                  : `${queued} registros na fila`}
+              </Text>
+              <Text style={styles.muted}>Ver fila e sincronização ›</Text>
+            </Pressable>
+>>>>>>> Stashed changes
             <Text style={styles.section}>Atividades recentes</Text>
             {filteredActivities.slice(0, 3).map(item => (
               <View style={styles.card} key={item.id_atividade_agricola}>
@@ -1177,6 +1285,17 @@ export function MobileShell({
               duplicações. Confira no servidor antes de qualquer correção.
             </Text>
           </>
+        )}
+        {screen === 'insumos' && (
+          <SuppliesScreen
+            client={client}
+            user={user}
+            connectivity={connectivity}
+            busy={cadastroBusy}
+            onBusyChange={setCadastroBusy}
+            uncertain={supplyUncertain}
+            onUncertainChange={setSupplyUncertain}
+          />
         )}
         {screen === 'talhoes' && (
           <>
@@ -1410,7 +1529,8 @@ export function MobileShell({
               [
                 ['Propriedades', 'propriedades'],
                 ['Talhões', 'talhoes'],
-                ['Financeiro e insumos', 'financeiro'],
+                ['Financeiro', 'financeiro'],
+                ['Insumos', 'insumos'],
                 ['Central de sincronização', 'sync'],
                 ['SafraIA', 'ia'],
                 ['Mapa offline', 'mapa'],
@@ -1525,6 +1645,7 @@ export function MobileShell({
               accessibilityRole="button"
               accessibilityLabel={label}
               key={target}
+              disabled={screen === 'insumos' && cadastroBusy}
               onPress={() => {
                 setNotice('');
                 setScreen(target);
@@ -1635,6 +1756,49 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+<<<<<<< Updated upstream
+=======
+  shortcutLink: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  shortcutLinkText: { color: '#197747', fontSize: 12, fontWeight: '700' },
+  shortcutRow: { gap: 10, paddingVertical: 2, paddingRight: 4 },
+  shortcut: {
+    width: 94,
+    minHeight: 114,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e1ebe2',
+    borderRadius: 18,
+  },
+  shortcutIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  shortcutIconText: { fontSize: 21 },
+  shortcutLabel: {
+    color: '#17382b',
+    fontWeight: '700',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  syncShortcut: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e1ebe2',
+    borderRadius: 16,
+    padding: 14,
+  },
+>>>>>>> Stashed changes
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     backgroundColor: '#fff',

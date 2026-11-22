@@ -3,6 +3,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { addEventListener, refresh, type NetInfoState } from '@react-native-community/netinfo';
 import { AppState, type AppStateStatus } from 'react-native';
 import App from '../App';
+import { BrandMark } from '../src/ui/BrandMark';
 import { getConnectivity } from '../src/app/sync/connectivity';
 import { openLocalDb } from '../src/infra/db/openLocalDb';
 
@@ -48,7 +49,14 @@ test('exibe conectividade e fila, atualiza ao retornar e remove assinaturas', as
   await ReactTestRenderer.act(async () => {
     renderer = ReactTestRenderer.create(<App />);
   });
+<<<<<<< Updated upstream
   expect(JSON.stringify(renderer!.toJSON())).toContain('Conectividade desconhecida.');
+=======
+  expect(renderer!.root.findAllByType(BrandMark)).toHaveLength(1);
+  expect(JSON.stringify(renderer!.toJSON())).toContain(
+    'Conectividade desconhecida.',
+  );
+>>>>>>> Stashed changes
   expect(JSON.stringify(renderer!.toJSON())).toContain('pendentes');
   expect(JSON.stringify(renderer!.toJSON())).toContain('com erro');
 
@@ -87,3 +95,99 @@ test('fecha banco que termina de abrir após desmontagem', async () => {
   expect(close).toHaveBeenCalledTimes(1);
   appStateSpy.mockRestore();
 });
+<<<<<<< Updated upstream
+=======
+
+test('login preserva a integração, opção de teste local e controle de senha', async () => {
+  (addEventListener as jest.Mock).mockReturnValue(jest.fn());
+  const appStateSpy = jest
+    .spyOn(AppState, 'addEventListener')
+    .mockReturnValue({ remove: jest.fn() });
+  (openLocalDb as jest.Mock).mockResolvedValue({
+    query: jest.fn().mockResolvedValue([{ pending: 0, syncing: 0, errors: 0 }]),
+    close: jest.fn().mockResolvedValue(undefined),
+  });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = jest
+    .fn()
+    .mockResolvedValue({ ok: false, status: 401 }) as typeof fetch;
+  let renderer: ReactTestRenderer.ReactTestRenderer;
+  await ReactTestRenderer.act(async () => {
+    renderer = ReactTestRenderer.create(<App />);
+  });
+  const root = renderer!.root;
+  expect(root.findByProps({ accessibilityLabel: 'Servidor' }).props.value).toBe(
+    'http://127.0.0.1:5000',
+  );
+  expect(
+    root.findByProps({
+      accessibilityLabel: 'Permitir HTTP local apenas para testes',
+    }).props.accessibilityState.checked,
+  ).toBe(false);
+  await ReactTestRenderer.act(async () => {
+    root
+      .findByProps({ accessibilityLabel: 'Servidor' })
+      .props.onChangeText('https://servidor.exemplo.com');
+  });
+  expect(root.findByProps({ accessibilityLabel: 'Servidor' }).props.value).toBe(
+    'https://servidor.exemplo.com',
+  );
+  expect(
+    root.findByProps({ accessibilityLabel: 'Senha' }).props.secureTextEntry,
+  ).toBe(true);
+  await ReactTestRenderer.act(async () =>
+    root.findByProps({ accessibilityLabel: 'Mostrar senha' }).props.onPress(),
+  );
+  expect(
+    root.findByProps({ accessibilityLabel: 'Senha' }).props.secureTextEntry,
+  ).toBe(false);
+  await ReactTestRenderer.act(async () =>
+    root.findByProps({ accessibilityLabel: 'Ocultar senha' }).props.onPress(),
+  );
+  expect(
+    root.findByProps({ accessibilityLabel: 'Senha' }).props.secureTextEntry,
+  ).toBe(true);
+  await ReactTestRenderer.act(async () => {
+    root
+      .findByProps({ accessibilityLabel: 'Servidor' })
+      .props.onChangeText('http://127.0.0.1:5000');
+    root
+      .findByProps({ accessibilityLabel: 'E-mail' })
+      .props.onChangeText('teste@example.com');
+    root
+      .findByProps({ accessibilityLabel: 'Senha' })
+      .props.onChangeText('senha-teste');
+  });
+  await ReactTestRenderer.act(async () =>
+    root.findByProps({ accessibilityLabel: 'Entrar' }).props.onPress(),
+  );
+  expect(globalThis.fetch).not.toHaveBeenCalled();
+  await ReactTestRenderer.act(async () =>
+    root
+      .findByProps({
+        accessibilityLabel: 'Permitir HTTP local apenas para testes',
+      })
+      .props.onPress(),
+  );
+  expect(JSON.stringify(renderer!.toJSON())).toContain('sem criptografia');
+  await ReactTestRenderer.act(async () =>
+    root.findByProps({ accessibilityLabel: 'Entrar' }).props.onPress(),
+  );
+  expect(globalThis.fetch).toHaveBeenCalledWith(
+    'http://127.0.0.1:5000/api/auth/login',
+    expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({
+        email: 'teste@example.com',
+        senha: 'senha-teste',
+      }),
+    }),
+  );
+  expect(JSON.stringify(renderer!.toJSON())).toContain(
+    'E-mail ou senha inválidos',
+  );
+  await ReactTestRenderer.act(async () => renderer!.unmount());
+  globalThis.fetch = originalFetch;
+  appStateSpy.mockRestore();
+});
+>>>>>>> Stashed changes

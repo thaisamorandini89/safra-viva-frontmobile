@@ -19,6 +19,7 @@ import { BackendSyncTransport } from '../infra/api/BackendSyncTransport';
 import type { LocalDb } from '../infra/db/LocalDb';
 import { openLocalDb } from '../infra/db/openLocalDb';
 import { MobileShell } from './MobileShell';
+import { BrandMark } from './BrandMark';
 
 export default function App() {
   const [storageStatus, setStorageStatus] = useState<
@@ -28,7 +29,7 @@ export default function App() {
   const [summary, setSummary] = useState<SyncSummary | null>(null);
   const [summaryError, setSummaryError] = useState(false);
   const [localDb, setLocalDb] = useState<LocalDb | null>(null);
-  const [server, setServer] = useState('');
+  const [server, setServer] = useState(__DEV__ ? 'http://127.0.0.1:5000' : '');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [allowLocalHttp, setAllowLocalHttp] = useState(false);
@@ -248,6 +249,7 @@ export default function App() {
               onPress={login}
               style={styles.button}
             >
+<<<<<<< Updated upstream
               <Text style={styles.buttonText}>
                 {busy ? 'Entrando...' : 'Entrar'}
               </Text>
@@ -256,6 +258,198 @@ export default function App() {
               A sessão é mantida apenas enquanto o aplicativo estiver aberto.
             </Text>
           </ScrollView>
+=======
+              <View style={styles.hero}>
+                <View pointerEvents="none" style={styles.heroDecoration}>
+                  <View style={styles.heroRing} />
+                  <View style={styles.heroRingInner} />
+                </View>
+                <View style={styles.brandRow}>
+                  <BrandMark size={44} />
+                  <View>
+                    <Text style={styles.brand}>SafraViva</Text>
+                    <Text style={styles.brandCaption}>
+                      INTELIGÊNCIA PARA O CAMPO
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.heroEyebrow}>DO PLANTIO À COLHEITA</Text>
+                <Text style={styles.heroTitle}>
+                  Seu campo, mais perto de você.
+                </Text>
+                <Text style={styles.heroDescription}>
+                  Acompanhe sua operação e tenha suas informações sempre à mão.
+                </Text>
+                <View style={styles.heroAccent} />
+              </View>
+
+              <View style={styles.formCard}>
+                <View style={styles.welcomeRow}>
+                  <View style={styles.welcomeCopy}>
+                    <Text style={styles.formEyebrow}>
+                      BEM-VINDO AO SAFRAVIVA
+                    </Text>
+                    <Text style={styles.formTitle}>Vamos começar?</Text>
+                    <Text style={styles.formDescription}>
+                      Entre com seus dados para acessar sua conta.
+                    </Text>
+                  </View>
+                  <Text
+                    style={styles.welcomeIcon}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                  >
+                    ✦
+                  </Text>
+                </View>
+
+                <Text style={styles.fieldLabel}>Endereço do servidor</Text>
+                <TextInput
+                  accessibilityLabel="Servidor"
+                  style={styles.input}
+                  placeholder="https://servidor.exemplo.com"
+                  placeholderTextColor="#819389"
+                  value={server}
+                  onChangeText={setServer}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="url"
+                />
+                <Text style={styles.fieldHint}>
+                  {__DEV__
+                    ? 'Para testes via USB, use o endereço local e habilite HTTP abaixo. Em outros casos, informe HTTPS, sem /api.'
+                    : 'Informe o endereço HTTPS, sem /api.'}
+                </Text>
+                {__DEV__ && (
+                  <View style={styles.devOption}>
+                    <Pressable
+                      accessibilityRole="checkbox"
+                      accessibilityLabel="Permitir HTTP local apenas para testes"
+                      accessibilityState={{ checked: allowLocalHttp }}
+                      onPress={() => setAllowLocalHttp(!allowLocalHttp)}
+                      style={styles.devRow}
+                    >
+                      <Text
+                        style={[
+                          styles.checkbox,
+                          allowLocalHttp && styles.checkboxChecked,
+                        ]}
+                      >
+                        {allowLocalHttp ? '✓' : ''}
+                      </Text>
+                      <Text style={styles.devLabel}>
+                        Permitir HTTP local apenas para testes
+                      </Text>
+                    </Pressable>
+                    {allowLocalHttp && (
+                      <Text style={styles.devWarning}>
+                        A senha e o token serão enviados sem criptografia. Use
+                        somente credenciais de teste em ambiente local.
+                      </Text>
+                    )}
+                  </View>
+                )}
+
+                <Text style={styles.fieldLabel}>E-mail</Text>
+                <TextInput
+                  accessibilityLabel="E-mail"
+                  style={styles.input}
+                  placeholder="seuemail@exemplo.com"
+                  placeholderTextColor="#819389"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                />
+                <Text style={styles.fieldLabel}>Senha</Text>
+                <View style={styles.passwordField}>
+                  <TextInput
+                    accessibilityLabel="Senha"
+                    style={styles.passwordInput}
+                    placeholder="Digite sua senha"
+                    placeholderTextColor="#819389"
+                    value={password}
+                    onChangeText={setPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    secureTextEntry={!showPassword}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      showPassword ? 'Ocultar senha' : 'Mostrar senha'
+                    }
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.passwordToggle}
+                  >
+                    <Text style={styles.passwordToggleText}>
+                      {showPassword ? 'Ocultar' : 'Mostrar'}
+                    </Text>
+                  </Pressable>
+                </View>
+                {!!loginError && (
+                  <Text accessibilityLiveRegion="polite" style={styles.error}>
+                    {loginError}
+                  </Text>
+                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Entrar"
+                  accessibilityState={{
+                    disabled: busy || storageStatus !== 'ready',
+                    busy,
+                  }}
+                  disabled={busy || storageStatus !== 'ready'}
+                  onPress={login}
+                  style={[
+                    styles.button,
+                    (busy || storageStatus !== 'ready') &&
+                      styles.buttonDisabled,
+                  ]}
+                >
+                  <Text style={styles.buttonText}>
+                    {busy ? 'Entrando...' : 'Entrar na minha conta'}
+                  </Text>
+                  {!busy && (
+                    <Text
+                      style={styles.buttonArrow}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no"
+                    >
+                      →
+                    </Text>
+                  )}
+                </Pressable>
+                <Text style={styles.sessionHint}>
+                  Sua sessão permanece ativa enquanto o aplicativo estiver
+                  aberto.
+                </Text>
+              </View>
+
+              <View style={styles.statusCard} accessibilityLiveRegion="polite">
+                <View style={styles.statusHeading}>
+                  <Text style={styles.statusIcon}>●</Text>
+                  <Text style={styles.statusTitle}>STATUS DO APLICATIVO</Text>
+                </View>
+                <Text style={styles.statusText}>{storageMessage}</Text>
+                <Text style={styles.statusText}>{connectivityMessage}</Text>
+                {summary && (
+                  <Text style={styles.statusText}>
+                    Fila local: {summary.pending} pendentes, {summary.syncing}{' '}
+                    em envio, {summary.errors} com erro.
+                  </Text>
+                )}
+                {summaryError && (
+                  <Text style={styles.statusText}>
+                    Não foi possível consultar a fila local.
+                  </Text>
+                )}
+              </View>
+              <Text style={styles.footer}>SAFRAVIVA · FEITO PARA O CAMPO</Text>
+            </ScrollView>
+          </KeyboardAvoidingView>
+>>>>>>> Stashed changes
         )}
       </SafeAreaView>
     </SafeAreaProvider>
@@ -269,12 +463,61 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
+<<<<<<< Updated upstream
     justifyContent: 'center',
     padding: 24,
   },
   title: {
     color: '#245334',
     fontSize: 32,
+=======
+    backgroundColor: '#f3f6ef',
+    paddingBottom: 28,
+  },
+  hero: {
+    backgroundColor: '#103d2b',
+    paddingHorizontal: 26,
+    paddingTop: 20,
+    paddingBottom: 52,
+    overflow: 'hidden',
+  },
+  heroDecoration: {
+    position: 'absolute',
+    right: -74,
+    top: 52,
+    width: 210,
+    height: 210,
+    opacity: 0.18,
+  },
+  heroRing: {
+    position: 'absolute',
+    width: 205,
+    height: 205,
+    borderWidth: 24,
+    borderColor: '#a2c878',
+    borderRadius: 105,
+  },
+  heroRingInner: {
+    position: 'absolute',
+    top: 48,
+    left: 48,
+    width: 110,
+    height: 110,
+    borderWidth: 15,
+    borderColor: '#a2c878',
+    borderRadius: 55,
+  },
+  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  brand: {
+    color: '#fff',
+    fontSize: 23,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  brandCaption: {
+    color: '#b8d2bf',
+    fontSize: 9,
+>>>>>>> Stashed changes
     fontWeight: '700',
   },
   subtitle: {

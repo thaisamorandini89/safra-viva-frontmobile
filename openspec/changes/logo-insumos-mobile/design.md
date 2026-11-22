@@ -1,0 +1,23 @@
+# Design
+
+## Contexto
+
+O logo web está desenhado como SVG no componente `frontendweb/src/components/layout/Logo.tsx`: círculo verde e folhas com o nome SafraViva. Não é uma imagem de logo personalizada de cada empresa. A identidade deve ser fiel ao desenho existente, sem assumir suporte a upload ou logotipos individuais.
+
+O backend registra as rotas sob `/api`: `GET/POST /insumos`, `GET/PUT/DELETE /insumos/{id}`, `GET /categorias-insumo` e `GET/POST /movimentacoes`. Existem também catálogos de produtos, fabricantes, marcas, fornecedores, propriedades e funcionários a conferir conforme cada formulário. A resposta de insumos inclui produto, categoria, propriedade, saldo, custo, status e lotes. O produto pode ser existente ou criado junto com o insumo. O saldo inicial positivo gera uma entrada; em edição o saldo deve mudar por movimentação, não por alteração direta.
+
+O modelo permite `id_propriedade` nulo e a listagem do serviço consulta todos os insumos. Não há demonstração de isolamento por empresa nessa consulta. O web também inclui dados de demonstração em algumas falhas de conexão, que não devem ser apresentados no mobile como dados reais.
+
+## Decisões
+
+1. Recriar ou portar o vetor do logo web como recurso local compatível com React Native, sem depender de conexão. Usar componente compartilhado, com variantes de tamanho e contraste, no login, início e cabeçalhos; preservar títulos, navegação, responsividade e acessibilidade, evitando anúncios repetidos pelo leitor de tela. Não alterar ícones nativos ou splash sem escopo e validação adicionais.
+2. Revalidar sessão e carregar insumos e propriedades separadamente dos demais indicadores da tela inicial. Exibir somente registros com propriedade identificada entre as propriedades da empresa da sessão; verificar novamente o vínculo antes de detalhe e escrita. Não expor registros sem propriedade, de outra empresa ou com vínculo inconsistente. Em falha da validação, informar indisponibilidade em vez de lista vazia. A política para insumos sem propriedade depende de decisão futura e de suporte seguro no servidor.
+3. Implementar lista acessível com pesquisa, filtros úteis, indicação de quantidade e status, detalhe com saldo, unidade, mínimo, lote e validade quando informados, e recarga. Exibir estados de carregamento, vazio, falha e possível desatualização, sem dados demonstrativos confundidos com reais. Caso haja cache em memória, identificá-lo como tal; não prometer cache persistente offline inexistente.
+4. No cadastro, escolher propriedade verificada e produto existente ou informar produto novo, nunca ambos. Validar campos e catálogos conforme contratos atuais e reconhecer que estoque inicial positivo cria entrada. Na edição, carregar detalhes atuais, preservar campos não alterados, nunca enviar saldo como edição e verificar possíveis efeitos da alteração no produto compartilhado; bloquear a edição de dados do produto quando não for possível garantir escopo seguro. Confirmar exclusão e respeitar recusas e restrições do servidor. Não incluir troca de propriedade sem revalidar destino e acesso.
+5. Histórico e entradas/saídas usam `/movimentacoes`: seguir o schema e as regras de tipo, quantidade, lote, responsável e demais campos, sem presumir que operações de demonstração do web existam no servidor. Apresentar dados retornados na confirmação e recarregar saldo e histórico. Respeitar vínculo do insumo e de referências como talhão e atividade quando fornecidas.
+6. Escritas somente online e com bloqueio contra toque duplo; não inserir na fila offline existente sem projeto explícito de idempotência e reconciliação. Se a resposta se perder, informar resultado desconhecido e orientar conferência no histórico ou lista antes de qualquer nova tentativa; não reenviar automaticamente nem afirmar fracasso ou sucesso. A falha de recarga após confirmação não invalida a escrita confirmada.
+7. Indicadores e relatórios devem refletir apenas registros elegíveis e dados reais disponíveis. Recursos do web sem contrato correspondente, tais como operação apenas demonstrativa, ficam claramente indisponíveis em vez de simular alteração persistida.
+
+## Segurança e verificação
+
+Os filtros mobile evitam apresentar registros sem vínculo verificável, mas não impedem que o servidor envie dados de terceiros ou aceite operações indevidas. Confirmar autenticação, autorização e isolamento reais antes de tratar a solução como segura em produção; quando não comprovados, registrar o bloqueio e não alegar proteção multiempresa. Não registrar credenciais ou dados sensíveis nos testes. A verificação física deve iniciar por leitura; qualquer escrita real exige confirmação específica e prévia da usuária.

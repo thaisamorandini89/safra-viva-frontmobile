@@ -3,8 +3,19 @@
 Aplicativo React Native bare com TypeScript, preparado para Android e iOS.
 O aplicativo oferece telas de início, atividades, nova atividade, sincronização,
 talhões, propriedades, financeiro, SafraIA por texto e mais, baseadas nos dados do
+<<<<<<< Updated upstream
 backend. A lista de atividades foi proposta para o mobile com busca e indicação
 dos registros pendentes. O mapa e o assistente por voz ainda não estão disponíveis.
+=======
+backend. A lista de atividades permite consultar registros do servidor e do
+aparelho, pesquisar e abrir detalhes. O mapa e o assistente por voz ainda não
+estão disponíveis.
+
+Na tela inicial, **Atalhos rápidos** leva ao cadastro de atividade, às atividades,
+aos talhões, ao financeiro e aos insumos. O acesso à fila de sincronização continua
+na tela inicial. A prévia de atividades usa os dados remotos da sessão e não é
+afetada pela pesquisa aplicada anteriormente na lista.
+>>>>>>> Stashed changes
 
 Para entrar, informe a origem **HTTPS** do backend, sem `/api`, e as credenciais.
 O Flask consultado serve HTTP na porta 5000: é necessário um proxy HTTPS com
@@ -16,6 +27,12 @@ em builds de produção. A sessão fica somente em memória; após
 fechar o app é necessário entrar novamente, inclusive antes de operar offline.
 Os cadastros usados no formulário devem ser carregados com internet durante a
 sessão atual. O usuário precisa estar vinculado a uma empresa.
+
+No modo de desenvolvimento, o endereço `http://127.0.0.1:5000` já vem
+preenchido, mas é preciso habilitar a opção de HTTP local para testes. Em um
+celular Android conectado por USB, execute `adb reverse tcp:5000 tcp:5000` com
+o backend em execução no computador. No emulador Android, use
+`http://10.0.2.2:5000`; em produção, informe o endereço HTTPS do servidor.
 
 Nas listas de propriedades e talhões, use **+ Nova propriedade** ou **+ Novo
 talhão** para cadastrar no backend. O cadastro é somente online: não entra na
@@ -39,15 +56,50 @@ consulte a propriedade na lista antes de tentar novamente. Se a atualização da
 lista falhar após a confirmação, use a opção de atualizar a lista. Não há controle
 de versão no backend: alterações simultâneas no mesmo campo podem se sobrescrever.
 
+<<<<<<< Updated upstream
 As atividades são salvas no SQLite antes do envio. A fila fica vinculada à conta
 e à origem do servidor, e resultados incertos são bloqueados sem reenvio
 automático. Consulte o [núcleo de sincronização](src/app/sync/README.md) para
 mais detalhes. No emulador Android, foram verificados a abertura do SQLite, a
 detecção online/offline e a rejeição de login fictício pelo backend real. Ainda
 faltam testes com sessão válida, envio de atividade, dispositivo físico e iOS.
+=======
+As atividades remotas são carregadas do backend e não têm cache persistente:
+quando disponíveis somente em memória, são indicadas como possivelmente
+desatualizadas. Para consultar seus detalhes, é necessário estar online. A lista
+considera os vínculos entre atividade, talhão, propriedade e empresa; esse
+filtro não substitui o isolamento no servidor.
 
-**Segurança:** no backend analisado, várias rotas de atividades, cadastros e
-financeiro não exigem autenticação nem aplicam isolamento por empresa. Os filtros
+Em **Insumos**, consulte e filtre os itens do servidor vinculados a propriedades
+verificadas da empresa. Insumos sem propriedade ou vinculados a outra empresa não
+aparecem; para conferir detalhes e histórico é necessária conexão. A tela permite
+cadastrar produto novo ou selecionar produto existente, editar estoque mínimo,
+valor e status, excluir mediante confirmação e registrar entradas e saídas. O
+estoque inicial positivo cria uma entrada, e o saldo só é alterado por movimentação.
+Na saída, a seleção de um lote específico pode permitir retirar lote vencido; sem
+seleção, o servidor aplica suas regras automáticas. Alguns campos e relatórios do
+web ainda não estão disponíveis no mobile.
+
+As escritas de insumos são online e não entram na fila offline. Se uma resposta
+for perdida, o app bloqueia novos envios de insumos até a conferência e liberação
+manual. Esse bloqueio não é persistido ao fechar o aplicativo ou sair da conta:
+nesses casos, confira a lista e o histórico no servidor antes de repetir qualquer
+operação. Dados carregados ficam apenas em memória e podem estar desatualizados.
+
+Novas atividades planejadas são salvas no SQLite antes do envio e podem ser
+sincronizadas automaticamente quando há conexão. A fila fica vinculada à conta
+e à origem do servidor. Resultados incertos são bloqueados sem reenvio
+automático; confira o backend antes de decidir como proceder. Após a confirmação,
+o registro local permanece visível até a lista remota apresentar o mesmo ID.
+Consulte o [núcleo de sincronização](src/app/sync/README.md) para mais detalhes.
+A integração de atividades ainda precisa ser conferida com dados reais no
+dispositivo; edição, exclusão, mudança de status e cadastro de insumos ou
+máquinas em atividades não fazem parte desta etapa.
+>>>>>>> Stashed changes
+
+**Segurança:** no backend analisado, rotas de insumos e movimentações, assim como
+várias rotas de atividades, cadastros e financeiro, não exigem autenticação nem
+aplicam isolamento por empresa. A lista de produtos é um catálogo global. Os filtros
 do mobile não substituem autorização no servidor; não exponha essas rotas em
 produção sem corrigir autenticação, permissões e isolamento no backend.
 O banco local não é criptografado. As tarefas estão em [`openspec/`](openspec/).
