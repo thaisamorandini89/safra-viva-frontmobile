@@ -197,6 +197,7 @@ test('navega pela lista e salva atividade local com o payload do backend', async
       '/atividades': [
         {
           id_atividade_agricola: 9,
+          id_talhao: 5,
           id_empresa: 7,
           id_propriedade: 3,
           tipo_atividade: 'Colheita',

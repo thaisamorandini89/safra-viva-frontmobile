@@ -3,10 +3,6 @@
 Aplicativo React Native bare com TypeScript, preparado para Android e iOS.
 O aplicativo oferece telas de início, atividades, nova atividade, sincronização,
 talhões, propriedades, financeiro, SafraIA por texto e mais, baseadas nos dados do
-<<<<<<< Updated upstream
-backend. A lista de atividades foi proposta para o mobile com busca e indicação
-dos registros pendentes. O mapa e o assistente por voz ainda não estão disponíveis.
-=======
 backend. A lista de atividades permite consultar registros do servidor e do
 aparelho, pesquisar e abrir detalhes. O mapa e o assistente por voz ainda não
 estão disponíveis.
@@ -15,7 +11,6 @@ Na tela inicial, **Atalhos rápidos** leva ao cadastro de atividade, às ativida
 aos talhões, ao financeiro e aos insumos. O acesso à fila de sincronização continua
 na tela inicial. A prévia de atividades usa os dados remotos da sessão e não é
 afetada pela pesquisa aplicada anteriormente na lista.
->>>>>>> Stashed changes
 
 Para entrar, informe a origem **HTTPS** do backend, sem `/api`, e as credenciais.
 O Flask consultado serve HTTP na porta 5000: é necessário um proxy HTTPS com
@@ -56,14 +51,6 @@ consulte a propriedade na lista antes de tentar novamente. Se a atualização da
 lista falhar após a confirmação, use a opção de atualizar a lista. Não há controle
 de versão no backend: alterações simultâneas no mesmo campo podem se sobrescrever.
 
-<<<<<<< Updated upstream
-As atividades são salvas no SQLite antes do envio. A fila fica vinculada à conta
-e à origem do servidor, e resultados incertos são bloqueados sem reenvio
-automático. Consulte o [núcleo de sincronização](src/app/sync/README.md) para
-mais detalhes. No emulador Android, foram verificados a abertura do SQLite, a
-detecção online/offline e a rejeição de login fictício pelo backend real. Ainda
-faltam testes com sessão válida, envio de atividade, dispositivo físico e iOS.
-=======
 As atividades remotas são carregadas do backend e não têm cache persistente:
 quando disponíveis somente em memória, são indicadas como possivelmente
 desatualizadas. Para consultar seus detalhes, é necessário estar online. A lista
@@ -95,7 +82,6 @@ Consulte o [núcleo de sincronização](src/app/sync/README.md) para mais detalh
 A integração de atividades ainda precisa ser conferida com dados reais no
 dispositivo; edição, exclusão, mudança de status e cadastro de insumos ou
 máquinas em atividades não fazem parte desta etapa.
->>>>>>> Stashed changes
 
 **Segurança:** no backend analisado, rotas de insumos e movimentações, assim como
 várias rotas de atividades, cadastros e financeiro, não exigem autenticação nem

@@ -25,8 +25,6 @@ import {
   type LocalRecord,
 } from '../infra/db/OfflineRepository';
 import { CadastroRural } from './CadastroRural';
-<<<<<<< Updated upstream
-=======
 import { ActivityDetails } from './ActivityDetails';
 import { BrandMark } from './BrandMark';
 import { SuppliesScreen } from './SuppliesScreen';
@@ -37,7 +35,6 @@ import {
   type Activity,
 } from '../app/activities/activityData';
 import { parseNumber } from '../app/cadastros/validation';
->>>>>>> Stashed changes
 import {
   loadProperty,
   propertyFields,
@@ -52,6 +49,7 @@ import {
 type Screen =
   | 'inicio'
   | 'atividades'
+  | 'detalhe-atividade'
   | 'nova'
   | 'sync'
   | 'talhoes'
@@ -92,16 +90,6 @@ type Tipo = {
   id_categoria_atividade: number;
   descricao: string;
   status: boolean;
-};
-type Atividade = {
-  id_atividade_agricola: number;
-  id_empresa: number | null;
-  id_propriedade: number | null;
-  tipo_atividade: string;
-  nome_talhao: string;
-  data_inicio: string;
-  status: string;
-  safra: string | null;
 };
 type Safra = {
   id_safra: number;
@@ -144,6 +132,7 @@ const statusNames: Record<string, string> = {
 const titles: Record<Screen, string> = {
   inicio: 'Início',
   atividades: 'Atividades',
+  'detalhe-atividade': 'Atividade',
   nova: 'Nova atividade',
   sync: 'Sincronização',
   talhoes: 'Talhões',
@@ -176,6 +165,17 @@ function validDate(value: string): boolean {
     !Number.isNaN(parsed.getTime()) &&
     parsed.toISOString().slice(0, 10) === value
   );
+}
+
+function localActivityData(record: LocalRecord): Record<string, unknown> {
+  try {
+    const data: unknown = JSON.parse(record.data_json);
+    return data && typeof data === 'object' && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
 }
 
 function money(value: number): string {
@@ -246,6 +246,7 @@ function Field({
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
+        accessibilityLabel={label}
         style={[styles.input, multiline && styles.multiline]}
         value={value}
         onChangeText={onChangeText}
@@ -487,7 +488,13 @@ export function MobileShell({
   const [categories, setCategories] = useState<Categoria[]>([]);
   const [types, setTypes] = useState<Tipo[]>([]);
   const [harvests, setHarvests] = useState<Safra[]>([]);
-  const [activities, setActivities] = useState<Atividade[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activitiesLoaded, setActivitiesLoaded] = useState(false);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [activitiesError, setActivitiesError] = useState('');
+  const [detailActivityId, setDetailActivityId] = useState<number | null>(null);
+  const [detailLocalId, setDetailLocalId] = useState<string | null>(null);
+  const activityRequest = useRef(0);
   const [localActivities, setLocalActivities] = useState<LocalRecord[]>([]);
   const [balance, setBalance] = useState<Saldo | null>(null);
   const [entries, setEntries] = useState<Lancamento[]>([]);
@@ -508,6 +515,7 @@ export function MobileShell({
   const [cost, setCost] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const activitySaveLock = useRef(false);
   const [cadastroBusy, setCadastroBusy] = useState(false);
   const [supplyUncertain, setSupplyUncertain] = useState(false);
   const [filter, setFilter] = useState('');
@@ -520,15 +528,12 @@ export function MobileShell({
     'proprietario',
   ].includes(user.perfil.toLowerCase());
 
-<<<<<<< Updated upstream
-=======
   function openActivities() {
     setFilter('');
     setNotice('');
     setScreen('atividades');
   }
 
->>>>>>> Stashed changes
   const reloadLocal = useCallback(async () => {
     const [nextSummary, nextQueue, local] = await Promise.all([
       readSyncSummary(db),
@@ -548,36 +553,20 @@ export function MobileShell({
     }
     try {
       await client.verifySession(user);
-      const [
-        allProperties,
-        allPlots,
-        allActivities,
-        allCategories,
-        allTypes,
-        allHarvests,
-      ] = await Promise.all([
-        client.request<Propriedade[]>('/propriedades'),
-        client.request<Talhao[]>('/talhoes'),
-        client.request<Atividade[]>('/atividades'),
-        client.request<Categoria[]>('/categorias-atividade'),
-        client.request<Tipo[]>('/tipos-atividade'),
-        client.request<Safra[]>('/safras'),
-      ]);
+      const [allProperties, allPlots, allCategories, allTypes, allHarvests] =
+        await Promise.all([
+          client.request<Propriedade[]>('/propriedades'),
+          client.request<Talhao[]>('/talhoes'),
+          client.request<Categoria[]>('/categorias-atividade'),
+          client.request<Tipo[]>('/tipos-atividade'),
+          client.request<Safra[]>('/safras'),
+        ]);
       const owned = allProperties.filter(
         item => user.id_empresa !== null && item.id_empresa === user.id_empresa,
       );
       const propertyIds = new Set(owned.map(item => item.id_propriedade));
       setProperties(owned);
       setPlots(allPlots.filter(item => propertyIds.has(item.id_propriedade)));
-      setActivities(
-        allActivities.filter(
-          item =>
-            item.id_empresa === user.id_empresa &&
-            user.id_empresa !== null &&
-            item.id_propriedade !== null &&
-            propertyIds.has(item.id_propriedade),
-        ),
-      );
       setCategories(allCategories.filter(item => item.status));
       setTypes(allTypes.filter(item => item.status));
       setHarvests(
@@ -631,6 +620,34 @@ export function MobileShell({
     }
   }, [canViewFinance, client, connectivity, user]);
 
+  const reloadActivities = useCallback(async () => {
+    if (connectivity !== 'online') return;
+    const requestId = ++activityRequest.current;
+    setActivitiesLoading(true);
+    setActivitiesError('');
+    try {
+      const result = await loadActivities(client, user);
+      if (requestId !== activityRequest.current) return;
+      setActivities(result);
+      setActivitiesLoaded(true);
+    } catch {
+      if (requestId === activityRequest.current)
+        setActivitiesError(
+          'Não foi possível atualizar as atividades ou confirmar seus vínculos.',
+        );
+    } finally {
+      if (requestId === activityRequest.current) setActivitiesLoading(false);
+    }
+  }, [client, connectivity, user]);
+
+  useEffect(() => {
+    if (connectivity === 'online') reloadActivities();
+    else setActivitiesLoading(false);
+    return () => {
+      activityRequest.current += 1;
+    };
+  }, [connectivity, reloadActivities]);
+
   const refreshCadastros = useCallback(async (): Promise<boolean> => {
     if (connectivity !== 'online') {
       return false;
@@ -674,7 +691,7 @@ export function MobileShell({
           : 'A fila aguarda nova verificação.',
       );
       await reloadLocal();
-      await reloadRemote();
+      await Promise.all([reloadRemote(), reloadActivities()]);
     } catch (error) {
       setNotice(
         error instanceof BackendError && error.status === 401
@@ -685,7 +702,15 @@ export function MobileShell({
       syncLock.current = false;
       setSyncing(false);
     }
-  }, [client, connectivity, db, reloadLocal, reloadRemote, user]);
+  }, [
+    client,
+    connectivity,
+    db,
+    reloadActivities,
+    reloadLocal,
+    reloadRemote,
+    user,
+  ]);
 
   useEffect(() => {
     reloadLocal().catch(() =>
@@ -741,7 +766,7 @@ export function MobileShell({
   }, [client, connectivity, employees, selectedProperty, user]);
 
   async function saveActivity() {
-    if (saving) {
+    if (activitySaveLock.current) {
       return;
     }
     const selectedType = types.find(
@@ -749,20 +774,38 @@ export function MobileShell({
         item.id_atividade === type && item.id_categoria_atividade === category,
     );
     const selectedPlot = plots.find(item => item.id_talhao === plot);
-    const numberCost = cost.trim() ? Number(cost.replace(',', '.')) : null;
+    const numberCost = parseNumber(cost);
     if (
+      !categories.some(
+        item => item.id_categoria_atividade === category && item.status,
+      ) ||
       !selectedType ||
       !selectedPlot ||
+      !properties.some(
+        item =>
+          item.id_propriedade === selectedPlot.id_propriedade &&
+          item.id_empresa === user.id_empresa &&
+          user.id_empresa !== null,
+      ) ||
       !validDate(date) ||
-      (numberCost !== null &&
+      (numberCost !== undefined &&
         (!Number.isFinite(numberCost) || numberCost < 0)) ||
-      user.id_empresa === null
+      !Number.isSafeInteger(user.id_empresa) ||
+      !user.id_empresa ||
+      user.id_empresa < 1 ||
+      harvest.trim().length > 20 ||
+      notes.trim().length > 1000 ||
+      (responsible !== null &&
+        !(employees[selectedPlot.id_propriedade] ?? []).some(
+          item => item.id_funcionario === responsible && item.status,
+        ))
     ) {
       setNotice(
         'Selecione categoria, tipo e talhão; informe uma data válida e um custo não negativo.',
       );
       return;
     }
+    activitySaveLock.current = true;
     setSaving(true);
     try {
       const ids = await db.query<{ id: string }>(
@@ -781,13 +824,24 @@ export function MobileShell({
         data_inicio: date,
         status: 'Planejada',
         safra: harvest.trim() || null,
-        custo_operacao: numberCost,
+        custo_operacao: numberCost ?? null,
         observacoes: notes.trim() || null,
       };
       const data: JsonObject = {
         ...payload,
         tipo_atividade: selectedType.descricao,
         nome_talhao: selectedPlot.nome_talhao,
+        nome_propriedade:
+          properties.find(
+            item => item.id_propriedade === selectedPlot.id_propriedade,
+          )?.nome_propriedade ?? null,
+        categoria:
+          categories.find(item => item.id_categoria_atividade === category)
+            ?.nome ?? null,
+        responsavel:
+          (employees[selectedPlot.id_propriedade] ?? []).find(
+            item => item.id_funcionario === responsible,
+          )?.nome_completo ?? null,
       };
       await new OfflineRepository(db).create({
         entityType: 'atividade_agricola',
@@ -809,6 +863,7 @@ export function MobileShell({
     } catch {
       setNotice('Não foi possível salvar a atividade no aparelho.');
     } finally {
+      activitySaveLock.current = false;
       setSaving(false);
     }
   }
@@ -852,16 +907,40 @@ export function MobileShell({
       : 'Conexão desconhecida';
   const queued = summary.pending + summary.syncing + summary.errors;
   const selectedHarvest = harvests.find(item => item.status) ?? harvests[0];
+  const recent = recentActivities(activities);
   const filteredActivities = activities.filter(item =>
-    `${item.tipo_atividade} ${item.nome_talhao} ${item.status}`
+    `${item.tipo_atividade ?? ''} ${item.nome_talhao ?? ''} ${
+      item.nome_propriedade ?? ''
+    } ${item.responsavel ?? ''} ${item.status ?? ''}`
       .toLowerCase()
       .includes(filter.toLowerCase()),
   );
-  const locallyVisible = localActivities.filter(
-    item =>
-      item.sync_status !== 'synced' &&
-      item.data_json.toLowerCase().includes(filter.toLowerCase()),
-  );
+  const locallyVisible = visibleLocalActivities(
+    localActivities,
+    activities,
+  ).filter(item => item.data_json.toLowerCase().includes(filter.toLowerCase()));
+  const duplicateActivity =
+    type !== null &&
+    plot !== null &&
+    validDate(date) &&
+    (activities.some(
+      item =>
+        item.id_tipo_atividade === type &&
+        item.id_talhao === plot &&
+        item.data_inicio === date,
+    ) ||
+      localActivities.some(item => {
+        try {
+          const data = JSON.parse(item.data_json);
+          return (
+            data.id_tipo_atividade === type &&
+            data.id_talhao === plot &&
+            data.data_inicio === date
+          );
+        } catch {
+          return false;
+        }
+      }));
 
   return (
     <View style={styles.screen}>
@@ -972,6 +1051,42 @@ export function MobileShell({
                 <Text style={styles.muted}>áreas produtivas</Text>
                 <Text style={styles.badge}>Ver lista ›</Text>
               </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Abrir atividades pela página inicial"
+                accessibilityValue={{
+                  text:
+                    activitiesLoading || !activitiesLoaded
+                      ? 'Quantidade de atividades do servidor indisponível'
+                      : `${activities.length} ${
+                          activities.length === 1
+                            ? 'atividade do servidor'
+                            : 'atividades do servidor'
+                        }${
+                          connectivity !== 'online' || activitiesError
+                            ? ', dados possivelmente desatualizados'
+                            : ''
+                        }`,
+                }}
+                onPress={openActivities}
+                style={styles.metric}
+              >
+                <Text style={styles.metricIcon}>▤</Text>
+                <Text style={styles.label}>ATIVIDADES</Text>
+                <Text style={styles.metricNumber}>
+                  {activitiesLoading || !activitiesLoaded
+                    ? '—'
+                    : activities.length}
+                </Text>
+                <Text style={styles.muted}>
+                  {activitiesLoaded &&
+                  !activitiesLoading &&
+                  (connectivity !== 'online' || activitiesError)
+                    ? 'do servidor · podem estar desatualizadas'
+                    : 'do servidor'}
+                </Text>
+                <Text style={styles.badge}>Ver lista ›</Text>
+              </Pressable>
               <View style={styles.metric}>
                 <Text style={styles.metricIcon}>⌁</Text>
                 <Text style={styles.label}>ÁREA CULTIVADA</Text>
@@ -987,25 +1102,25 @@ export function MobileShell({
                 <Text style={styles.muted}>a acompanhar</Text>
               </View>
             </View>
-            <Text style={styles.section}>Atalhos rápidos</Text>
-            <View style={styles.chips}>
+            <View style={styles.row}>
+              <Text style={styles.section}>Atalhos rápidos</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Abrir lista de atividades"
+                onPress={openActivities}
+                style={styles.shortcutLink}
+              >
+                <Text style={styles.shortcutLinkText}>Atividades ›</Text>
+              </Pressable>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator
+              contentContainerStyle={styles.shortcutRow}
+              accessibilityLabel="Atalhos rápidos"
+            >
               {(
                 [
-<<<<<<< Updated upstream
-                  ['Nova atividade', 'nova'],
-                  ['Talhões', 'talhoes'],
-                  ['Financeiro', 'financeiro'],
-                  ['Sincronização', 'sync'],
-                ] as [string, Screen][]
-              ).map(([label, target]) => (
-                <Chip
-                  key={target}
-                  label={label}
-                  onPress={() => setScreen(target)}
-                />
-              ))}
-            </View>
-=======
                   {
                     label: 'Nova atividade',
                     target: 'nova',
@@ -1083,19 +1198,61 @@ export function MobileShell({
               </Text>
               <Text style={styles.muted}>Ver fila e sincronização ›</Text>
             </Pressable>
->>>>>>> Stashed changes
             <Text style={styles.section}>Atividades recentes</Text>
-            {filteredActivities.slice(0, 3).map(item => (
-              <View style={styles.card} key={item.id_atividade_agricola}>
+            {activitiesLoading && (
+              <Text style={styles.muted}>Carregando atividades...</Text>
+            )}
+            {!!activitiesError && (
+              <Text accessibilityLiveRegion="polite" style={styles.warning}>
+                {activitiesError}
+              </Text>
+            )}
+            {activitiesLoaded &&
+              (connectivity !== 'online' || !!activitiesError) && (
+                <Text style={styles.warning}>
+                  Atividades carregadas anteriormente; os dados podem estar
+                  desatualizados.
+                </Text>
+              )}
+            {!activitiesLoaded && connectivity !== 'online' && (
+              <Text style={styles.warning}>
+                Atividades do servidor indisponíveis. Conecte-se para
+                carregá-las.
+              </Text>
+            )}
+            {activitiesLoaded &&
+              !activitiesLoading &&
+              !activitiesError &&
+              connectivity === 'online' &&
+              recent.length === 0 && (
+                <Text style={styles.muted}>
+                  Nenhuma atividade do servidor encontrada.
+                </Text>
+              )}
+            {recent.map(item => (
+              <Pressable
+                style={styles.card}
+                key={item.id_atividade_agricola}
+                accessibilityRole="button"
+                accessibilityLabel={`Consultar atividade ${item.tipo_atividade}`}
+                onPress={() => {
+                  setDetailLocalId(null);
+                  setDetailActivityId(item.id_atividade_agricola);
+                  setScreen('detalhe-atividade');
+                }}
+              >
                 <Text style={styles.cardTitle}>{item.tipo_atividade}</Text>
                 <Text style={styles.muted}>
                   {item.nome_talhao} · {item.data_inicio}
                 </Text>
-              </View>
+              </Pressable>
             ))}
             <Chip
               label="Ver atividades ›"
-              onPress={() => setScreen('atividades')}
+              onPress={() => {
+                setFilter('');
+                setScreen('atividades');
+              }}
             />
           </>
         )}
@@ -1112,49 +1269,131 @@ export function MobileShell({
               />
             </View>
             <TextInput
+              accessibilityLabel="Buscar atividades"
               style={styles.input}
               placeholder="Buscar por atividade, talhão ou status"
               value={filter}
               onChangeText={setFilter}
             />
+            <Action
+              label="↻ Atualizar atividades"
+              disabled={connectivity !== 'online' || activitiesLoading}
+              onPress={reloadActivities}
+            />
+            {activitiesLoading && (
+              <Text style={styles.muted}>Carregando atividades...</Text>
+            )}
+            {!!activitiesError && (
+              <Text accessibilityLiveRegion="polite" style={styles.warning}>
+                {activitiesError}
+              </Text>
+            )}
+            {activitiesLoaded &&
+              (connectivity !== 'online' || !!activitiesError) && (
+                <Text style={styles.warning}>
+                  Atividades carregadas anteriormente; os dados podem estar
+                  desatualizados.
+                </Text>
+              )}
+            {!activitiesLoaded && connectivity !== 'online' && (
+              <Text style={styles.warning}>
+                Atividades do servidor indisponíveis. Conecte-se para
+                carregá-las.
+              </Text>
+            )}
             {locallyVisible.map(item => {
-              const data = JSON.parse(item.data_json);
+              const data = localActivityData(item);
               return (
-                <View style={styles.card} key={item.local_id}>
-                  <Text style={styles.cardTitle}>{data.tipo_atividade}</Text>
+                <Pressable
+                  style={styles.card}
+                  key={item.local_id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Consultar atividade local ${String(
+                    data.tipo_atividade ?? 'sem identificação',
+                  )}`}
+                  onPress={() => {
+                    setDetailActivityId(null);
+                    setDetailLocalId(item.local_id);
+                    setScreen('detalhe-atividade');
+                  }}
+                >
+                  <Text style={styles.cardTitle}>
+                    {String(data.tipo_atividade ?? 'Atividade local')}
+                  </Text>
                   <Text style={styles.muted}>
-                    {data.nome_talhao} · {data.data_inicio}
+                    {String(
+                      data.nome_propriedade ?? 'Propriedade não informada',
+                    )}{' '}
+                    · {String(data.nome_talhao ?? 'Talhão não informado')} ·{' '}
+                    {String(data.data_inicio ?? 'Data não informada')}
                   </Text>
                   <Text style={styles.badge}>
-                    {statusNames[item.sync_status]}
+                    {item.sync_status === 'synced'
+                      ? 'Enviada · aguardando atualização da lista'
+                      : `No aparelho · ${statusNames[item.sync_status]}`}
                   </Text>
-                </View>
+                  <Text style={styles.muted}>Ver detalhes ›</Text>
+                </Pressable>
               );
             })}
             {filteredActivities.map(item => (
-              <View style={styles.card} key={item.id_atividade_agricola}>
+              <Pressable
+                style={styles.card}
+                key={item.id_atividade_agricola}
+                accessibilityRole="button"
+                accessibilityLabel={`Consultar atividade ${item.tipo_atividade}`}
+                onPress={() => {
+                  setDetailLocalId(null);
+                  setDetailActivityId(item.id_atividade_agricola);
+                  setScreen('detalhe-atividade');
+                }}
+              >
                 <Text style={styles.cardTitle}>{item.tipo_atividade}</Text>
                 <Text style={styles.muted}>
+                  {item.nome_propriedade ?? 'Propriedade não informada'} ·{' '}
                   {item.nome_talhao} · {item.data_inicio}
                 </Text>
                 <Text style={styles.badge}>{item.status}</Text>
-              </View>
+                <Text style={styles.muted}>Ver detalhes ›</Text>
+              </Pressable>
             ))}
-            {locallyVisible.length === 0 && filteredActivities.length === 0 && (
-              <Text style={styles.muted}>
-                {remoteLoaded
-                  ? 'Nenhuma atividade encontrada.'
-                  : 'Atividades do servidor indisponíveis.'}
-              </Text>
-            )}
+            {activitiesLoaded &&
+              !activitiesLoading &&
+              !activitiesError &&
+              connectivity === 'online' &&
+              locallyVisible.length === 0 &&
+              filteredActivities.length === 0 && (
+                <Text style={styles.muted}>Nenhuma atividade encontrada.</Text>
+              )}
           </>
+        )}
+        {screen === 'detalhe-atividade' && (
+          <ActivityDetails
+            client={client}
+            user={user}
+            connectivity={connectivity}
+            remoteId={detailActivityId}
+            local={
+              localActivities.find(item => item.local_id === detailLocalId) ??
+              null
+            }
+            onClose={() => setScreen('atividades')}
+          />
         )}
         {screen === 'nova' && (
           <>
             <Text style={styles.info}>
-              A atividade é salva no aparelho antes do envio. É necessário
-              carregar os cadastros enquanto estiver online.
+              A atividade planejada é salva no aparelho e enviada
+              automaticamente quando houver conexão. É necessário carregar os
+              cadastros enquanto estiver online.
             </Text>
+            {duplicateActivity && (
+              <Text style={styles.warning}>
+                Já existe uma atividade visível com este tipo, talhão e data.
+                Confira a lista antes de salvar; o servidor também verifica
+                duplicidade.
+              </Text>
+            )}
             <Text style={styles.section}>Categoria</Text>
             <View style={styles.chips}>
               {categories.map(item => (
@@ -1756,8 +1995,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-<<<<<<< Updated upstream
-=======
   shortcutLink: {
     minHeight: 44,
     justifyContent: 'center',
@@ -1798,7 +2035,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
   },
->>>>>>> Stashed changes
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     backgroundColor: '#fff',
